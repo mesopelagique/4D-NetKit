@@ -36,20 +36,20 @@ End for each
 
 $testCases:=New collection:C1472(\
 New object:C1471("name"; "testGET"; "url"; "http://photos.example.net/photos"; \
-"clientID"; "dpf43f3p2l4k3l03"; "clientSecret"; "kd94hf93k423kf44"; "token"; "nnch734d00sl2jdk"; "tokenSecret"; "pfkkdhi9sl3r4s00"; \
-"parameters"; New collection:C1472("file"; "vacation.jpg"; "size"; "original"); \
+"clientId"; "dpf43f3p2l4k3l03"; "clientSecret"; "kd94hf93k423kf44"; "token"; "nnch734d00sl2jdk"; "tokenSecret"; "pfkkdhi9sl3r4s00"; \
+"parameters"; New object:C1471("file"; "vacation.jpg"; "size"; "original"); \
 "nonce"; "kllo9940pd9333jh"; "timestamp"; "1191242096"; "method"; "GET"; "result"; "tR3+Ty81lMeYAr/Fid0kMTYa/WM="); \
 New object:C1471("name"; "testPOST"; "url"; "http://photos.example.net/photos"; \
-"clientID"; "abcd"; "clientSecret"; "efgh"; "token"; "ijkl"; "tokenSecret"; "mnop"; \
-"parameters"; New collection:C1472("name"; "value"); \
+"clientId"; "abcd"; "clientSecret"; "efgh"; "token"; "ijkl"; "tokenSecret"; "mnop"; \
+"parameters"; New object:C1471("name"; "value"); \
 "nonce"; "rkNG5bfzqFw"; "timestamp"; "1451152366"; "method"; "POST"; "result"; "6qB7WBgezEpKhfr2Bpl+HfcS4SA="); \
 New object:C1471("name"; "testSpaceURL"; "url"; "photos.example.net/ph%20otos"; \
-"clientID"; "abcd"; "clientSecret"; "efgh"; "token"; "ijkl"; "tokenSecret"; "mnop"; \
-"parameters"; New collection:C1472("name"; "value"); \
+"clientId"; "abcd"; "clientSecret"; "efgh"; "token"; "ijkl"; "tokenSecret"; "mnop"; \
+"parameters"; New object:C1471("name"; "value"); \
 "nonce"; "rkNG5bfzqFw"; "timestamp"; "1451152366"; "method"; "GET"; "result"; "g2HpPCyQIVxLC3NNVn2x9oeUtyg="); \
 New object:C1471("name"; "testSamePrefix"; "url"; "photos.example.net/photos"; \
-"clientID"; "dpf43f3p2l4k3l03"; "clientSecret"; "kd94hf93k423kf44"; "token"; "nnch734d00sl2jdk"; "tokenSecret"; "pfkkdhi9sl3r4s00"; \
-"parameters"; New collection:C1472("file_1"; "vacation.jpg"; "file_10"; "original"); \
+"clientId"; "dpf43f3p2l4k3l03"; "clientSecret"; "kd94hf93k423kf44"; "token"; "nnch734d00sl2jdk"; "tokenSecret"; "pfkkdhi9sl3r4s00"; \
+"parameters"; New object:C1471("file_1"; "vacation.jpg"; "file_10"; "original"); \
 "nonce"; "kllo9940pd9333jh"; "timestamp"; "1191242096"; "method"; "GET"; "result"; "2qG5S5iX/g/6NIKutdcSYACUHsg="))
 
 var $provider : cs:C1710.OAuth1Provider
