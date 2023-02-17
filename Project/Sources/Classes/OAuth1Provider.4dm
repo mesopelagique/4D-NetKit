@@ -39,7 +39,7 @@ The redirect_uri of your app, where authentication responses can be sent and rec
 		This:C1470.scope:=String:C10($inParams.scope)
 	End if 
 	
-	
+	This:C1470.timeout:=Choose:C955(Value type:C1509($inParams.timeout)=Is undefined:K8:13; 120; Num:C11($inParams.timeout))
 	
 	This:C1470.name:=String:C10($inParams.name)
 	This:C1470._fillURIAccordingToName()
@@ -47,7 +47,6 @@ The redirect_uri of your app, where authentication responses can be sent and rec
 	This:C1470.signatureMethod:=(Length:C16(String:C10($inParams.signatureMethod))=0) ? cs:C1710.SignatureMethod.new() : cs:C1710.SignatureMethod.new(String:C10($inParams.signatureMethod))
 	
 	This:C1470._finally()
-	
 	
 	// Alias of clientSecret
 Function get consumerSecret : Text
@@ -164,8 +163,10 @@ Function _authorizationHeader($opt : Object; $url : Text; $parameters : Object)-
 	$authorizationParameters:=This:C1470._authorizationParametersWithSignature($opt.method; $opt.body; $url; $parameters)
 	
 	var $parameterComponents : Collection
-	$parameterComponents:=Split string:C1554(This:C1470._urlEncodedQuery($authorizationParameters); "&")
-	$parameterComponents.sort(This:C1470._sortP)  // XXX maybe This._sortP
+	var $authorizationParametersString : Text
+	$authorizationParametersString:=This:C1470._urlEncodedQuery($authorizationParameters)
+	$parameterComponents:=Split string:C1554($authorizationParametersString; "&")
+	$parameterComponents.sort(This:C1470._sortQueryParameters)
 	
 	var $component : Text
 	var $subcomponent : Collection
@@ -228,17 +229,19 @@ Function _authorizationParameters($body : Variant; $timestamp : Text; $nonce : T
 	$authorizationParameters["oauth_timestamp"]:=$timestamp
 	$authorizationParameters["oauth_nonce"]:=$nonce
 	
-	var $hash : Text
-	$hash:=This:C1470.signatureMethod.hash($body)
-	If (($hash#Null:C1517) && (Length:C16($hash)>0))
-		$authorizationParameters["oauth_body_hash"]:=$hash
+	If ($body#Null:C1517)
+		var $hash : Text
+		$hash:=This:C1470.signatureMethod.hash($body)
+		If (($hash#Null:C1517) && (Length:C16($hash)>0))
+			$authorizationParameters["oauth_body_hash"]:=$hash
+		End if 
 	End if 
 	
 	If (Length:C16(String:C10(This:C1470.oauthToken))>0)
 		$authorizationParameters["oauth_token"]:=This:C1470.oauthToken
 	End if 
 	
-Function _sortP($obj : Object)
+Function _sortQueryParameters($obj : Object)
 	var $p0; $p1 : Collection
 	$p0:=Split string:C1554($obj.value; "=")
 	$p1:=Split string:C1554($obj.value2; "=")
@@ -269,7 +272,7 @@ Function _signature($method : Text; $url : Text; $parameters : Object)->$sign : 
 	var $parameterComponents : Collection
 	$parameterString:=This:C1470._urlEncodedQuery($parameters)
 	$parameterComponents:=Split string:C1554($parameterString; "&")
-	$parameterComponents.sort(This:C1470._sortP)
+	$parameterComponents.sort(This:C1470._sortQueryParameters)
 	
 	$parameterString:=$parameterComponents.join("&")
 	$encodedParameterString:=This:C1470._urlEncoded($parameterString)
@@ -296,14 +299,14 @@ Function _postOAuthRequestToken()->$result : Object
 	$parameters:=New object:C1471
 	$parameters["oauth_callback"]:=This:C1470.redirectURI
 	$parameters["oauth_consumer_key"]:=This:C1470.clientID
-	$parameters["oauth_consumer_secret"]:=This:C1470.clientSecret
+	//$parameters["oauth_consumer_secret"]:=This.clientSecret
 	
 	var $options : Object
 	$options:=New object:C1471
-	$options.headers:=New object:C1471("Content-Type"; "application/x-www-form-urlencoded")
+	$options.headers:=New object:C1471()
 	// TODO: Add custom headers from client (needed sometimes)
 	$options.method:=HTTP POST method:K71:2
-	$options.body:=This:C1470._formEncoded($parameters)
+	//$options.body:=This._formEncoded($parameters)
 	$options.dataType:="text"
 	
 	var $signatureURL : Text
@@ -314,7 +317,9 @@ Function _postOAuthRequestToken()->$result : Object
 	ASSERT:C1129(Position:C15("?"; $signatureURL)=0; "Request token URI with query parameters is not supported yet")
 	
 	// TODO: Sign headers
-	$options.headers["Authorization"]:=This:C1470._authorizationHeader($options; $signatureURL; $signatureParameters)
+	var $header : Text
+	$header:=This:C1470._authorizationHeader($options; $signatureURL; $signatureParameters)
+	$options.headers["Authorization"]:=$header
 	
 	var $savedMethod : Text
 	$savedMethod:=Method called on error:C704
@@ -338,7 +343,7 @@ Function _postOAuthRequestToken()->$result : Object
 			//$result:=cs.OAuth1Token.new()
 			//$result._loadFromResponse($response)
 			var $responseParameters : Object
-			//$responseParameters:=This._parametersFromQueryString($response.parametersFromQueryString)
+			$responseParameters:=This:C1470._parametersFromQueryString($response)
 			// important one are
 			This:C1470.oauthToken:=$responseParameters["oauth_token"] || $responseParameters["token"]
 			This:C1470.oauthTokenSecret:=$responseParameters["oauth_token_secret"]
@@ -386,67 +391,111 @@ Function _postOAuthRequestToken()->$result : Object
 		End if 
 		
 	End if 
-/*
-// 2: post authorize
+	
+	// 2: post authorize
 Function _authorize
-// or:
-$token:=This._encodeToken(This.oauthToken)  // but encoded
-$urlString:=This.authenticateURI+(This.authenticateURI.contains("?") ? "&" : "?")
-$urlString+=This.authorizeURLOAuthTokenParam+"="+$token
-If (Bool(This.addConsumerKeyToAuthorizeURL))  // optional
-$urlString+="&"+This.authorizeURLConsumerKeyParam+"="+This.clientID
-End if 
-If (Bool(This.addCallbackURLToAuthorizeURL))  // optional
-$urlString+="&oauth_callback="+This.redirectURI
-End if 
+	// or:
+	var $token; $urlString : Text
+	$token:=This:C1470._encodeToken(This:C1470.oauthToken)  // but encoded
+	$urlString:=This:C1470.authenticateURI+((Position:C15("?"; This:C1470.authenticateURI)>0) ? "&" : "?")
+	$urlString+=This:C1470.authorizeURLOAuthTokenParam+"="+$token
+	If (Bool:C1537(This:C1470.addConsumerKeyToAuthorizeURL))  // optional
+		$urlString+="&"+This:C1470.authorizeURLConsumerKeyParam+"="+This:C1470.clientID
+	End if 
+	If (Bool:C1537(This:C1470.addCallbackURLToAuthorizeURL))  // optional
+		$urlString+="&oauth_callback="+This:C1470.redirectURI
+	End if 
 	
-// TODO: open browser or any way to validate
-This.authorizeURLHandler.handle($urlString)
-// -> must launch > waitRedirect
+	var $redirectURI : Text
+	$redirectURI:=This:C1470.redirectURI
+	
+	Use (Storage:C1525)
+		OB REMOVE:C1226(Storage:C1525; "token")
+		Storage:C1525.params:=New shared object:C1526("redirectURI"; $redirectURI)
+	End use 
+	
+	OPEN URL:C673($urlString; *)
+	
+	//TRACE
+	var $endTime : Integer
+	$endTime:=Milliseconds:C459+(This:C1470.timeout*1000)
+	While ((Milliseconds:C459<=$endTime) & (Not:C34(OB Is defined:C1231(Storage:C1525; "token")) | (Storage:C1525.token=Null:C1517)))
+		DELAY PROCESS:C323(Current process:C322; 10)
+	End while 
+	
+	Use (Storage:C1525)
+		If (OB Is defined:C1231(Storage:C1525; "token"))
+			This:C1470.oauthToken:=Storage:C1525.token.oauth_token
+			This:C1470.oauthVerifier:=Storage:C1525.token.oauth_verifier
+			
+			If (Not:C34(Bool:C1537(This:C1470.allowMissingOAuthVerifier)) && (Length:C16(String:C10(This:C1470.oauthVerifier))=0))
+				This:C1470._throwError(3; New object:C1471("attribute"; "oauth_verifier"))  // TODO: check error code
+			End if 
+			// GET VAR used, but could be in framgment!
+			
+			OB REMOVE:C1226(Storage:C1525; "token")
+			OB REMOVE:C1226(Storage:C1525; "params")
+		End if 
+	End use 
+	
+	This:C1470._postOAuthAccessTokenWithRequestToken()
 	
 	
-// 2bis: receive authorize and call next step
-Function waitRedirect
-// Then wait redirection? and get it
-var $responseParameters : Object
-$responseParameters:=$queryString.parametersFromQueryString
-$responseParameters:=$fragment.parametersFromQueryString
-//$responseParameters["oauth_token"] || $responseParameters["token"]
-If ($responseParameters["oauth_token"]=Null)
-// TODO: throw
-	
-Else 
-This.oauthToken=$responseParameters["oauth_token"].safeStringByRemovingPercentEncoding
-If ($responseParameters["oauth_verifier"]#Null)
-This.oauthVerifier=$responseParameters["oauth_verifier"].safeStringByRemovingPercentEncoding
-Else 
-If (Bool(This.allowMissingOAuthVerifier))
-// its ok
-Else 
-// TODO: throw missing oauth verifier
-End if 
-End if 
-	
-This._postOAuthAccessTokenWithRequestToken()
-	
-End if 
-	
-// 3- get finally token
+	// 3- get finally token
 Function _postOAuthAccessTokenWithRequestToken()
-var $parameters : Object
-$parameters:=New object
-$parameters["oauth_token"]=This.oauthToken
-$parameters["oauth_verifier"]=This.oauthVerifier
+	var $parameters : Object
+	$parameters:=New object:C1471
+	$parameters["oauth_token"]:=This:C1470.oauthToken
+	If (Not:C34(Bool:C1537(This:C1470.allowMissingOAuthVerifier)))
+		$parameters["oauth_verifier"]:=This:C1470.oauthVerifier
+	End if 
 	
-// HTTP POST This.tokenURI
-var $responseParameters : Text
-$responseParameters:=$response.parametersFromQueryString
-This.oauthToken:=$responseParameters["oauth_token"].safeStringByRemovingPercentEncoding
-If ($responseParameters["oauth_token_secret"]#Null)
-This.oauthTokenSecret:=$responseParameters["oauth_token_secret"].safeStringByRemovingPercentEncoding
-End if 
-*/
-	// on completion it's finish
+	var $options : Object
+	$options:=New object:C1471
+	$options.method:=HTTP POST method:K71:2
+	$options.dataType:="text"
+	$options.headers:=New object:C1471("Content-Type"; "application/x-www-form-urlencoded")
+	$options.body:=This:C1470._urlEncodedQuery($parameters)
+	
+	var $signatureParameters : Object
+	$signatureParameters:=$parameters
+	var $signatureURL : Text
+	$signatureURL:=This:C1470.tokenURI
+	var $header : Text
+	$header:=This:C1470._authorizationHeader($options; $signatureURL; $signatureParameters)
+	$options.headers["Authorization"]:=$header
+	
+	var $savedMethod : Text
+	$savedMethod:=Method called on error:C704
+	ON ERR CALL:C155("_ErrorHandler")
+	var $request : 4D:C1709.HTTPRequest
+	$request:=4D:C1709.HTTPRequest.new(This:C1470.tokenURI; $options)
+	$request.wait(30)
+	ON ERR CALL:C155($savedMethod)
+	
+	var $status : Integer
+	var $response : Text
+	$status:=$request["response"]["status"]
+	$response:=$request["response"]["body"]
+	
+	If ($status=200)
+		
+		If (Length:C16($response)>0)
+			
+			var $responseParameters : Object
+			$responseParameters:=This:C1470._parametersFromQueryString($response)
+			
+			This:C1470.oauthToken:=$responseParameters["oauth_token"] || $responseParameters["token"]
+			This:C1470.oauthTokenSecret:=$responseParameters["oauth_token_secret"]
+			
+		Else 
+			
+		End if 
+		
+	Else 
+		
+	End if 
+	
 	
 	// MARK: - text function
 	// TODO: url encode things
@@ -559,15 +608,33 @@ Function _urlQueryEncoded($toEncode : Text)->$encoded : Text
 	End for 
 	
 Function _urlEncodedQuery($object : Object)->$encoded : Text
-	$encoded:=OB Entries:C1720($object).map(Formula:C1597($2._urlQueryEncoded($1.value.key)+"="+$2._urlQueryEncoded($1.value.value)); This:C1470)\
-		.join("&")
+	// $encoded:=OB Entries($object).map(Formula($2._urlQueryEncoded($1.value.key)+"="+$2._urlQueryEncoded($1.value.value)); This)\
+						.join("&") // not working
+	var $col : Collection
+	$col:=New collection:C1472
+	var $entry : Object
+	For each ($entry; OB Entries:C1720($object))
+		$col.push(This:C1470._urlQueryEncoded($entry.key)+"="+This:C1470._urlQueryEncoded($entry.value))
+	End for each 
+	$encoded:=$col.join("&")
 	
+Function _parametersFromQueryString($text : Text)->$object : Object
+	$object:=New object:C1471
+	var $parameterComponents; $subcomponent : Collection
+	$parameterComponents:=Split string:C1554($text; "&")
+	var $component : Text
+	For each ($component; $parameterComponents)
+		$subcomponent:=Split string:C1554($component; "=")
+		If ($subcomponent.length=2)
+			$object[$subcomponent[0]]:=$subcomponent[1]
+		End if 
+		// length=1?
+	End for each 
 	
 	// Mark: - [Public]
 	// ----------------------------------------------------
 	
-	
 Function getToken()->$result : Object
-	
 	$result:=This:C1470._postOAuthRequestToken()
+	$result:=This:C1470  // a token object not implemented yet so return this
 	
