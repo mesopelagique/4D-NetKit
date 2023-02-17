@@ -1,4 +1,8 @@
 //%attributes = {"invisible":true}
+// New OAuth1 Provider
+C_OBJECT:C1216(New OAuth1 provider; $0)
+C_OBJECT:C1216(New OAuth1 provider; $1)
+
 // New OAuth2 Provider
 C_OBJECT:C1216(New OAuth2 provider; $0)
 C_OBJECT:C1216(New OAuth2 provider; $1)

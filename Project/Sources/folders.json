@@ -2,7 +2,8 @@
 	"4D NetKit": {
 		"groups": [
 			"Classes",
-			"Project Methods"
+			"Project Methods",
+			"Tests"
 		]
 	},
 	"Classes": {
@@ -16,11 +17,13 @@
 			"GraphMessageList",
 			"GraphRecipient",
 			"GraphUserList",
+			"OAuth1Provider",
 			"OAuth2Provider",
 			"OAuth2Token",
 			"Office365",
 			"Office365Mail",
-			"Office365User"
+			"Office365User",
+			"SignatureMethod"
 		]
 	},
 	"Project Methods": {
@@ -41,8 +44,15 @@
 			"_urlEscape",
 			"Compiler_Methods",
 			"Compiler_Variables",
+			"New OAuth1 provider",
 			"New OAuth2 provider",
 			"New Office365 provider"
+		]
+	},
+	"Tests": {
+		"methods": [
+			"test_oauth1",
+			"test_signatureMethod"
 		]
 	},
 	"trash": {}
