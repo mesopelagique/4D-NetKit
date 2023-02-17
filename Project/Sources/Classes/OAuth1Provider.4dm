@@ -223,7 +223,7 @@ Function _authorizationParametersWithSignature($method; $body; $url; $parameters
 Function _authorizationParameters($body : Variant; $timestamp : Text; $nonce : Text)->$authorizationParameters : Object
 	$authorizationParameters:=New object:C1471
 	$authorizationParameters["oauth_version"]:="1.0"
-	$authorizationParameters["oauth_signature_method"]:=This:C1470.signatureMethod.rawValue
+	$authorizationParameters["oauth_signature_method"]:=This:C1470.signatureMethod.name
 	$authorizationParameters["oauth_consumer_key"]:=This:C1470.consumerKey
 	$authorizationParameters["oauth_timestamp"]:=$timestamp
 	$authorizationParameters["oauth_nonce"]:=$nonce
